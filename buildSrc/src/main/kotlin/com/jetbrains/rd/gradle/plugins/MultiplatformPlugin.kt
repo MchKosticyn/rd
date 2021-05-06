@@ -2,6 +2,7 @@ package com.jetbrains.rd.gradle.plugins
 
 import com.jetbrains.rd.gradle.dependencies.junitVersion
 import com.jetbrains.rd.gradle.dependencies.kotlinxCoroutinesVersion
+import jetbrains.sign.GpgSignSignatoryProvider
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.publish.PublishingExtension
@@ -10,6 +11,7 @@ import org.gradle.api.publish.maven.tasks.AbstractPublishToMaven
 import org.gradle.api.publish.tasks.GenerateModuleMetadata
 import org.gradle.api.tasks.testing.Test
 import org.gradle.kotlin.dsl.*
+import org.gradle.plugins.signing.SigningExtension
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
@@ -24,6 +26,7 @@ open class MultiplatformPlugin : Plugin<Project> {
         apply(plugin = "org.jetbrains.kotlin.multiplatform")
         apply(plugin = "maven-publish")
         apply(plugin = "org.jetbrains.dokka")
+        apply(plugin = "signing")
 
         configure<KotlinMultiplatformExtension> {
             val packageJavadoc = createPackageJavaDoc(files("src/commonMain/kotlin", "src/jvmMain/kotlin"))
@@ -116,8 +119,18 @@ open class MultiplatformPlugin : Plugin<Project> {
                         artifact(packageJavadoc)
                     }
                 }
+                project.configure<SigningExtension> {
+                    sign(publications)
+                    signatories = GpgSignSignatoryProvider()
+                }
 
-                setRemoteRepositories()
+                //setRemoteRepositories()
+                repositories {
+                    maven {
+                        name = "internal"
+                        url = uri("/Users/mfilippov/Desktop/maven-test")
+                    }
+                }
             }
         }
     }

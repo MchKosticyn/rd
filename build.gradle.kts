@@ -1,4 +1,5 @@
 import com.jetbrains.rd.gradle.dependencies.kotlinVersion
+import org.jetbrains.dokka.ReflectDsl.get
 
 version = System.getenv("RELEASE_VERSION_NUMBER") ?: "SNAPSHOT"
 
