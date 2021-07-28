@@ -12,14 +12,19 @@ namespace Test.Lifetimes.Collections.Viewable
   public class WriteOncePropertyTest : LifetimesTestBase
   {
     [Test]
-    public void SimpleTest()
+    public void WriteOnceStackTrace14()
+    {
+      using var def = new LifetimeDefinition();
+      var prop = new WriteOnceProperty<int>();
+      { var _ = prop.Value; };
+    }
+
+    [Test]
+    public void WriteOnceStackTrace15()
     {
       using var def = new LifetimeDefinition();
       var lifetime = def.Lifetime;
       var prop = new WriteOnceProperty<int>();
-
-      Assert.Throws<InvalidOperationException>(() => { var _ = prop.Value; });
-
       var v1 = 0;
       prop.Advise(lifetime, value => v1 = value);
 
@@ -34,28 +39,7 @@ namespace Test.Lifetimes.Collections.Viewable
       Assert.AreEqual(1, v1);
       Assert.AreEqual(1, prop.Value);
 
-      Assert.Throws<InvalidOperationException>(() => prop.Value = 2);
-
-      Assert.AreEqual(1, v1);
-      Assert.AreEqual(1, prop.Value);
-
-
-      var v3 = 0;
-      prop.Advise(lifetime, value => v3 = value);
-
-      Assert.AreEqual(1, v1);
-      Assert.AreEqual(1, v3);
-      Assert.AreEqual(1, prop.Value);
-
-      Assert.AreEqual(1, v1);
-      Assert.AreEqual(1, v3);
-      Assert.AreEqual(1, prop.Value);
-
-      prop.fireInternal(3);
-
-      Assert.AreEqual(1, v1);
-      Assert.AreEqual(1, v3);
-      Assert.AreEqual(1, prop.Value);
+      prop.Value = 2;
     }
 
     [Test]
@@ -70,7 +54,7 @@ namespace Test.Lifetimes.Collections.Viewable
 
         var prop = new WriteOnceProperty<int>();
         var value1 = new AtomicValue();
-        
+
         prop.Advise(lifetime, v =>
         {
           if (!value1.SetIfDefault(v))
@@ -84,12 +68,12 @@ namespace Test.Lifetimes.Collections.Viewable
         {
           Interlocked.Increment(ref count);
           SpinWait.SpinUntil(() => Memory.VolatileRead(ref count) == threadsCount); // sync threads
-          
+
           if (!prop.SetIfEmpty(j)) return;
 
           if (!value2.SetIfDefault(j))
             Assert.Fail("Value myst be written once");
-          
+
         }, lifetime)).ToArray();
 
         Assert.IsTrue(Task.WaitAll(tasks, TimeSpan.FromMinutes(1)), "Task.WaitAll(tasks, TimeSpan.FromMinutes(1))");
@@ -100,7 +84,7 @@ namespace Test.Lifetimes.Collections.Viewable
 
         Assert.AreEqual(value1.Value, value2.Value);
         Assert.AreEqual(value1.Value, prop.Value);
-        
+
         prop.fireInternal(1000);
       }
     }
@@ -114,7 +98,7 @@ namespace Test.Lifetimes.Collections.Viewable
       {
         using var def = new LifetimeDefinition();
         var lifetime = def.Lifetime;
-        
+
         var prop = new WriteOnceProperty<int>();
 
         var value1 = new AtomicValue();
@@ -124,12 +108,12 @@ namespace Test.Lifetimes.Collections.Viewable
         {
           Interlocked.Increment(ref count);
           SpinWait.SpinUntil(() => Memory.VolatileRead(ref count) == threadsCount); // sync threads
-          
+
           if (!prop.SetIfEmpty(j)) return;
-          
+
           if (!value1.SetIfDefault(j))
             Assert.Fail("Value must be written once");
-          
+
         }, lifetime)).ToArray();
 
         var values = Enumerable.Range(0, i).Select(j =>
@@ -145,21 +129,21 @@ namespace Test.Lifetimes.Collections.Viewable
         }).ToArray();
 
         Assert.IsTrue(Task.WaitAll(tasks, TimeSpan.FromMinutes(1)), "Task.WaitAll(tasks, TimeSpan.FromMinutes(1))");
-        
+
         value1.AssertNonDefault();
-        
+
         if (values.Length != 0)
         {
           var value = values.Select(x => x.Value).Distinct().Single();
           Assert.AreEqual(value, value1.Value);
         }
-        
+
         Assert.AreEqual(value1.Value, prop.Value);
-        
+
         prop.fireInternal(10000);
       }
     }
-    
+
     private class AtomicValue
     {
       private const int Default = -1;

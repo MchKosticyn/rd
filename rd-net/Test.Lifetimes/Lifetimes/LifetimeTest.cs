@@ -12,11 +12,11 @@ using NUnit.Framework;
 
 namespace Test.Lifetimes.Lifetimes
 {
-  
-  
+
+
   public class LifetimeTest : LifetimesTestBase
   {
-    
+
     // ReSharper disable once InconsistentNaming
     LifetimeDefinition def;
     // ReSharper disable once InconsistentNaming
@@ -39,7 +39,7 @@ namespace Test.Lifetimes.Lifetimes
     {
       throw new FailureException();
     }
-    
+
     [Test]
     public void TestEmptyLifetime()
     {
@@ -51,13 +51,13 @@ namespace Test.Lifetimes.Lifetimes
     public void TestActionsSequence()
     {
       var log = new List<int>();
-      
+
       def.Lifetime.OnTermination(() => log.Add(1));
       def.Lifetime.OnTermination(() => log.Add(2));
       def.Lifetime.OnTermination(() => log.Add(3));
 
       def.Terminate();
-      
+
       Assert.AreEqual(new []{3,2,1}, log.ToArray());
     }
 
@@ -66,14 +66,14 @@ namespace Test.Lifetimes.Lifetimes
     public void TestNestedLifetime()
     {
       var log = new List<int>();
-      
+
       def.Lifetime.OnTermination(() => log.Add(1));
       new LifetimeDefinition(def.Lifetime).Lifetime.OnTermination(() => log.Add(2));
       def.Lifetime.OnTermination(() => log.Add(3));
-      
+
       def.Terminate();
-      
-      Assert.AreEqual(new []{3,2,1}, log.ToArray()); 
+
+      Assert.AreEqual(new []{3,2,1}, log.ToArray());
     }
 
     [Test]
@@ -94,7 +94,7 @@ namespace Test.Lifetimes.Lifetimes
     {
       var lin = new Linearization();
       lin.Enable();
-      
+
       var log = new List<int>();
 
       var task = Task.Run(() =>
@@ -104,23 +104,23 @@ namespace Test.Lifetimes.Lifetimes
           log.Add(0);
           Assert.AreEqual(LifetimeStatus.Alive, lt.Status);
           Assert.True(lt.IsAlive);
-          
+
           lin.Point(0);
           log.Add(1);
 
           SpinWaitEx.SpinUntil(() => def.Status == LifetimeStatus.Canceling);
-          Assert.False(lt.IsAlive);                    
+          Assert.False(lt.IsAlive);
         });
-        
+
         //shouldn't execute
         var second = lt.TryExecute(() => { log.Add(2); });
-        
+
         Assert.True(first.Succeed);
         Assert.False(second.Succeed);
       });
-      
+
       def.Lifetime.OnTermination(() => {log.Add(-1);});
-      
+
       lin.Point(1);
       def.Terminate();
       lin.Point(2);
@@ -128,14 +128,14 @@ namespace Test.Lifetimes.Lifetimes
       task.Wait();
       Assert.AreEqual(new []{0, 1, -1}, log.ToArray());
 
-    } 
+    }
 #endif
-     
+
     [Test]
     public void TestEternal()
     {
       Assert.True(Lifetime.Eternal.IsEternal);
-      
+
       //doesn't fail
       Lifetime.Eternal.OnTermination(() => { });
     }
@@ -147,7 +147,7 @@ namespace Test.Lifetimes.Lifetimes
       Assert.AreEqual(Lifetime.Eternal, eternal);
       Assert.AreEqual(Lifetime.Eternal, Lifetime.Eternal);
       Assert.AreEqual(eternal, eternal);
-      
+
       Assert.True(Lifetime.Eternal == eternal);
 
       Assert.AreNotEqual(Lifetime.Eternal, Lifetime.Terminated);
@@ -161,51 +161,23 @@ namespace Test.Lifetimes.Lifetimes
       Assert.True(Lifetime.Terminated.Status == LifetimeStatus.Terminated);
     }
 
-
     [Test]
-    public void TestRecursiveTermination()
+    public void StackTrace1()
     {
-      Assert.Throws<InvalidOperationException>(() => lt.TryExecute(() => { def.Terminate(); }).Unwrap());
-      Assert.AreEqual(LifetimeStatus.Alive, lt.Status);
-
-      def.AllowTerminationUnderExecution = true;
-      lt.TryExecute(() => { def.Terminate(); });
-      Assert.AreEqual(LifetimeStatus.Terminated, lt.Status);
+      def = new LifetimeDefinition();
+      lt.TryExecute(() => { def.Terminate(); }).Unwrap();
     }
 
+    [Test]
+    public void StackTrace2()
+    {
+      lt.TryExecute(Fail);
+    }
 
     [Test]
-    public void TestTryExecuteAction()
+    public void StackTrace3()
     {
-      Assert.True(lt.TryExecute(() => { }).Succeed);
-      Assert.True(lt.TryExecute(() => { }, true).Succeed);
-      
-      Assert.Throws<FailureException>(() => lt.TryExecute(Fail));
-      Assert.True(lt.TryExecute(Fail, true).Exception is FailureException);
-      Assert.True(lt.TryExecute(Fail, true).FailedNotCanceled);
-      
-      def.Terminate();
-      Assert.True(lt.TryExecute(Fail).Canceled);
-      Assert.True(lt.TryExecute(Fail).Exception is LifetimeCanceledException);
-      Assert.True(lt.TryExecute(Fail, true).Canceled);
-      Assert.True(lt.TryExecute(Fail, true).Exception is LifetimeCanceledException);
-    }
-    
-    [Test]
-    public void TestTryExecuteFunc()
-    {
-      Assert.True(lt.TryExecute(() => 1).Succeed);
-      Assert.True(lt.TryExecute(() => 1, true).Succeed);
-      
-      Assert.Throws<FailureException>(() => lt.TryExecute(Fail<int>));
-      Assert.True(lt.TryExecute(Fail<int>, true).Exception is FailureException);
-      Assert.True(lt.TryExecute(Fail<int>, true).FailedNotCanceled);
-      
-      def.Terminate();
-      Assert.True(lt.TryExecute(Fail<int>).Canceled);
-      Assert.True(lt.TryExecute(Fail<int>).Exception is LifetimeCanceledException);
-      Assert.True(lt.TryExecute(Fail<int>, true).Canceled);
-      Assert.True(lt.TryExecute(Fail<int>, true).Exception is LifetimeCanceledException);
+      lt.TryExecute(Fail<int>);
     }
 
     [Test]
@@ -219,7 +191,7 @@ namespace Test.Lifetimes.Lifetimes
       {
         void LoggerHandler(LeveledMessage message)
         {
-          if (message.Level == LoggingLevel.WARN && message.FormattedMessage.Contains(expectedWarningText)) 
+          if (message.Level == LoggingLevel.WARN && message.FormattedMessage.Contains(expectedWarningText))
             warningReceived = true;
         }
 
@@ -257,7 +229,7 @@ namespace Test.Lifetimes.Lifetimes
       Assert.IsTrue(warningReceived, "Warning `{0}` must have been logged", expectedWarningText);
       Assert.IsTrue(exceptionReceived, "Exception `{0}` must have been logged", expectedExceptionText);
     }
-    
+
     [Test]
     public void TestBracketGood()
     {
@@ -268,14 +240,14 @@ namespace Test.Lifetimes.Lifetimes
         log = 0;
         def = new LifetimeDefinition();
         action();
-        Assert.AreEqual(1, log);      
-        def.Terminate();      
+        Assert.AreEqual(1, log);
+        def.Terminate();
         Assert.AreEqual(11, log);
       }
-      
+
       //Action, Action
       Inner( () => lt.Bracket(() => log += 1, () => log += 10));
-      
+
       //Func<T>, Action
       Inner(() => Assert.AreEqual(1, lt.Bracket(() =>
         {
@@ -285,7 +257,7 @@ namespace Test.Lifetimes.Lifetimes
 
         () => { log += 10; }
       )));
-      
+
       //Func<T>, Action<T>
       Inner(() => Assert.AreEqual(10, lt.Bracket(() =>
         {
@@ -296,25 +268,25 @@ namespace Test.Lifetimes.Lifetimes
         x => { log += x; }
       )));
     }
-    
-    
+
+
     [Test]
-    public void TestBracketCanceled()
+    public void StackTrace4()
     {
       var log = 0;
       def.Terminate();
       void Inner(Action action)
       {
         log = 0;
-        Assert.Throws<LifetimeCanceledException>(() => action());
-        Assert.AreEqual(0, log);      
-        def.Terminate(); //once more      
+        action();
+        Assert.AreEqual(0, log);
+        def.Terminate(); //once more
         Assert.AreEqual(0, log);
       }
-      
+
       //Action, Action
       Inner( () => lt.Bracket(() => log += 1, () => log += 10));
-      
+
       //Func<T>, Action
       Inner(() => Assert.AreEqual(1, lt.Bracket(() =>
         {
@@ -324,7 +296,7 @@ namespace Test.Lifetimes.Lifetimes
 
         () => { log += 10; }
       )));
-      
+
       //Func<T>, Action<T>
       Inner(() => Assert.AreEqual(10, lt.Bracket(() =>
         {
@@ -335,29 +307,29 @@ namespace Test.Lifetimes.Lifetimes
         x => { log += x; }
       )));
     }
-    
-    
+
+
     [Test]
-    public void TestBracketBadOpening()
+    public void StackTrace5()
     {
       var log = 0;
       void Inner(Action action)
       {
         def = new LifetimeDefinition();
         log = 0;
-        Assert.Throws<FailureException>(() => action());
-        Assert.AreEqual(1, log);      
-        def.Terminate(); //once more      
+        action();
+        Assert.AreEqual(1, log);
+        def.Terminate(); //once more
         Assert.AreEqual(1, log);
       }
-      
+
       //Action, Action
       Inner(() => lt.Bracket(() =>
       {
         log += 1;
         Fail();
       }, () => log += 10));
-      
+
       //Func<T>, Action
       Inner(() => Assert.AreEqual(1, lt.Bracket(() =>
         {
@@ -367,7 +339,7 @@ namespace Test.Lifetimes.Lifetimes
 
         () => { log += 10; }
       )));
-      
+
       //Func<T>, Action<T>
       Inner(() => Assert.AreEqual(10, lt.Bracket(() =>
         {
@@ -378,8 +350,8 @@ namespace Test.Lifetimes.Lifetimes
         x => { log += x; }
       )));
     }
-    
-    
+
+
     [Test]
     public void TestBracketTerminationInOpening()
     {
@@ -390,18 +362,18 @@ namespace Test.Lifetimes.Lifetimes
         def.AllowTerminationUnderExecution = true;
         log = 0;
         action();
-        Assert.AreEqual(11, log);      
-        def.Terminate(); //once more      
+        Assert.AreEqual(11, log);
+        def.Terminate(); //once more
         Assert.AreEqual(11, log);
       }
-      
+
       //Action, Action
       Inner(() => lt.Bracket(() =>
       {
         log += 1;
         def.Terminate();
       }, () => log += 10));
-      
+
       //Func<T>, Action
       Inner(() => Assert.AreEqual(1, lt.Bracket(() =>
         {
@@ -412,7 +384,7 @@ namespace Test.Lifetimes.Lifetimes
 
         () => { log += 10; }
       )));
-      
+
       //Func<T>, Action<T>
       Inner(() => Assert.AreEqual(10, lt.Bracket(() =>
         {
@@ -424,25 +396,25 @@ namespace Test.Lifetimes.Lifetimes
         x => { log += x; }
       )));
     }
-    
-    
-    
+
+
+
     [Test]
     public void TestTryBracketGood()
     {
-      
+
       var log = 0;
       void Inner(Action action)
       {
         log = 0;
         def = new LifetimeDefinition();
         action();
-        Assert.AreEqual(1, log);      
-        def.Terminate();      
+        Assert.AreEqual(1, log);
+        def.Terminate();
         Assert.AreEqual(11, log);
       }
 
-      
+
       //Action + Action
       Inner(() => Assert.True(Result.Unit == lt.TryBracket(() =>
         {
@@ -458,8 +430,8 @@ namespace Test.Lifetimes.Lifetimes
 
                                 () => { log += 10; }
                                 , true)));
-            
-      
+
+
       //Func<T> + Action
       Inner(() => Assert.True(Result.Success(1) == lt.TryBracket(() =>
                                 {
@@ -477,8 +449,8 @@ namespace Test.Lifetimes.Lifetimes
 
                                 () => { log += 10; }
                                 , true)));
-      
-      
+
+
       //Func<T> + Action<T>
       Inner(() => Assert.True(Result.Success(10) == lt.TryBracket(() =>
                                 {
@@ -496,22 +468,22 @@ namespace Test.Lifetimes.Lifetimes
 
                                 x => { log += x; }
                                 , true)));
-      
+
     }
-    
-    
+
+
     [Test]
     public void TestTryBracketCanceled()
     {
-      
+
       var log = 0;
       void Inner(Action action)
       {
         log = 0;
         def.Terminate();
         action();
-        Assert.AreEqual(0, log);      
-        def.Terminate();      
+        Assert.AreEqual(0, log);
+        def.Terminate();
         Assert.AreEqual(0, log);
       }
 
@@ -525,7 +497,7 @@ namespace Test.Lifetimes.Lifetimes
         Assert.True(res.Canceled);
         Assert.True(res.Exception is LifetimeCanceledException lce && lce.Lifetime == lt);
       });
-      
+
       Inner(() =>
       {
         var res = lt.TryBracket(() => { log += 1; },
@@ -536,8 +508,8 @@ namespace Test.Lifetimes.Lifetimes
         Assert.True(res.Canceled);
         Assert.True(res.Exception is LifetimeCanceledException lce && lce.Lifetime == lt);
       });
-      
-      
+
+
       //Func<T> + Action
       Inner(() =>
       {
@@ -550,7 +522,7 @@ namespace Test.Lifetimes.Lifetimes
         Assert.True(res.Canceled);
         Assert.True(res.Exception is LifetimeCanceledException lce && lce.Lifetime == lt);
       });
-      
+
       Inner(() =>
       {
         var res = lt.TryBracket(() => { log += 1; return 1;},
@@ -561,7 +533,7 @@ namespace Test.Lifetimes.Lifetimes
         Assert.True(res.Canceled);
         Assert.True(res.Exception is LifetimeCanceledException lce && lce.Lifetime == lt);
       });
-      
+
       //Func<T> + Action<T>
       Inner(() =>
       {
@@ -574,7 +546,7 @@ namespace Test.Lifetimes.Lifetimes
         Assert.True(res.Canceled);
         Assert.True(res.Exception is LifetimeCanceledException lce && lce.Lifetime == lt);
       });
-      
+
       Inner(() =>
       {
         var res = lt.TryBracket(() => { log += 1; return 1;},
@@ -587,10 +559,10 @@ namespace Test.Lifetimes.Lifetimes
       });
 
     }
-    
-    
+
+
     [Test]
-    public void TestTryBracketBadOpeningWrap()
+    public void StackTrace6()
     {
       var log = 0;
       void Inner(Action action)
@@ -598,19 +570,19 @@ namespace Test.Lifetimes.Lifetimes
         log = 0;
         def = new LifetimeDefinition();
         action();
-        Assert.AreEqual(1, log);      
-        def.Terminate();      
+        Assert.AreEqual(1, log);
+        def.Terminate();
         Assert.AreEqual(1, log);
       }
 
       //Action + Action
       Inner(() =>
       {
-        Assert.Throws<FailureException>( () => lt.TryBracket(() => { log += 1; Fail(); },
+        lt.TryBracket(() => { log += 1; Fail(); },
           () => { log += 10;  }
-        ));
+        );
       });
-      
+
       Inner(() =>
       {
         var res = lt.TryBracket(() => { log += 1; Fail(); },
@@ -620,8 +592,8 @@ namespace Test.Lifetimes.Lifetimes
         Assert.True(res.FailedNotCanceled);
         Assert.True(res.Exception is FailureException);
       });
-      
-      
+
+
       //Func<T> + Action
       Inner(() =>
       {
@@ -629,7 +601,7 @@ namespace Test.Lifetimes.Lifetimes
           () => { log += 10;  }
         ));
       });
-      
+
       Inner(() =>
       {
         var res = lt.TryBracket(() => { log += 1; return Fail<int>(); },
@@ -640,7 +612,7 @@ namespace Test.Lifetimes.Lifetimes
         Assert.True(res.Exception is FailureException);
       });
 
-      
+
       //Func<T> + Action<T>
       Inner(() =>
       {
@@ -651,7 +623,7 @@ namespace Test.Lifetimes.Lifetimes
           x => { log += x; }
         ));
       });
-      
+
       Inner(() =>
       {
         var res = lt.TryBracket(() => { log += 1; return Fail<int>(); },
@@ -663,47 +635,41 @@ namespace Test.Lifetimes.Lifetimes
         Assert.True(res.Exception is FailureException);
       });
     }
-    
-    
-    
+
+
+
     [Test]
-    public void TestTryBracketTerminationInOpening()
+    public void StackTrace7()
     {
-      
+
       var log = 0;
-      
-      
+
+
       void InnerSuccess<T>(Func<bool, Result<T>> action)
       {
         log = 0;
         def = new LifetimeDefinition {AllowTerminationUnderExecution = true};
-        
+
         Assert.True(action(false).Succeed);
         Assert.AreEqual(11, log);
-        
+
         log = 0;
         def = new LifetimeDefinition{AllowTerminationUnderExecution = true};
         Assert.True(action(true).Succeed);
         Assert.AreEqual(11, log);
-        
+
         Assert.AreEqual(11, log);
       }
-      
+
       void InnerFail<T>(Func<bool, Result<T>> action)
       {
         log = 0;
         def = new LifetimeDefinition{AllowTerminationUnderExecution = true};
-        
-        Assert.Throws<FailureException>(() => action(false));
-        Assert.AreEqual(11, log);
-        
-        log = 0;
-        def = new LifetimeDefinition{AllowTerminationUnderExecution = true};
-        Assert.True(action(true).Exception is FailureException);
-        Assert.AreEqual(11, log);
+
+        action(false);
       }
-      
-      //Action + Action 
+
+      //Action + Action
       InnerSuccess(wrap => lt.TryBracket(() =>
         {
           log += 1;
@@ -712,7 +678,7 @@ namespace Test.Lifetimes.Lifetimes
         () => { log += 10; },
         wrap
       ));
-      
+
       InnerFail(wrap => lt.TryBracket(() =>
         {
           log += 1;
@@ -721,8 +687,8 @@ namespace Test.Lifetimes.Lifetimes
         () => { log += 10; Fail(); },
         wrap
       ));
-      
-      
+
+
       //Func<T> + Action
       InnerSuccess(wrap => lt.TryBracket(() =>
         {
@@ -733,7 +699,7 @@ namespace Test.Lifetimes.Lifetimes
         () => { log += 10; },
         wrap
       ));
-      
+
 
       // Func<T> + Action<T>
       InnerFail(wrap => lt.TryBracket(() =>
@@ -744,7 +710,7 @@ namespace Test.Lifetimes.Lifetimes
         },
         x => { log += x; Fail();},
         wrap
-      )); 
+      ));
     }
 
 
@@ -760,7 +726,7 @@ namespace Test.Lifetimes.Lifetimes
 
       Assert.Throws<InvalidOperationException>(() => lt.OnTermination(() => { executed++; }));
       Assert.AreEqual(1, executed);
-      
+
       //dispose
       Assert.False(lt.TryOnTermination(() => { executed++; }));
       Assert.AreEqual(1, executed); //no change
@@ -794,19 +760,19 @@ namespace Test.Lifetimes.Lifetimes
         await Task.Yield();
         return 0;
       });
-      
+
       Assert.True(task.IsCanceled);
     }
-    
+
     [Test]
-    public void TestFailedTask() {
+    public void ConcurrentStackTrace8() {
       var task = lt.ExecuteAsync(async () =>
       {
         await Task.Yield();
         throw new Exception();
       });
 
-      Assert.Throws<AggregateException>(task.Wait);
+      task.Wait();
     }
 #endif
 
@@ -823,12 +789,12 @@ namespace Test.Lifetimes.Lifetimes
 
       var resCount = def.GetDynamicField("myResCount");
       Assert.AreEqual(2, resCount); //one is dead
-      
+
       var resourcesCapacity = def.GetDynamicField("myResources").GetDynamicProperty("Length");
       Assert.AreEqual(2, resourcesCapacity); //one is dead
     }
 
-    
+
 //    [Test]
 //    public void TestScopeLifetime()
 //    {
@@ -840,7 +806,7 @@ namespace Test.Lifetimes.Lifetimes
 //      }
 //       Assert.False(lf.IsAlive);
 //    }
-//    
+//
 //    [Test]
 //    public void TestScopedLifetimeWithAliveParent()
 //    {
@@ -848,12 +814,12 @@ namespace Test.Lifetimes.Lifetimes
 //      using (var scoped = new ScopedLifetime(lt))
 //      {
 //        lf = scoped;
-//        lf.AssertIsAlive();        
+//        lf.AssertIsAlive();
 //      }
 //      Assert.True(lt.IsAlive);
 //      Assert.False(lf.IsAlive);
 //    }
-//    
+//
 //    [Test]
 //    public void TestScopedLifetimeWithTerminatingParent()
 //    {
@@ -868,7 +834,7 @@ namespace Test.Lifetimes.Lifetimes
 //      Assert.False(lt.IsAlive);
 //      Assert.False(lf.IsAlive);
 //    }
-//    
+//
 //    [Test]
 //    public void TestScopedLifetimeWithTerminatedParent()
 //    {
@@ -893,22 +859,22 @@ namespace Test.Lifetimes.Lifetimes
       Log.Root.CatchAndDrop(task.Wait);
       Assert.AreEqual(TaskStatus.Canceled, task.Status);
     }
-    
+
 
     [Test]
     public void TestCancellationToken2()
     {
       var evt = new ManualResetEvent(false);
       var task = Task.Run(() => { evt.Set();}, lt);
-      
+
       evt.WaitOne();
       def.Terminate();
-      
+
       Log.Root.CatchAndDrop(task.Wait);
-      
+
       Assert.AreEqual(TaskStatus.RanToCompletion, task.Status);
     }
-    
+
     [Test]
     public void TestCancellationToken3()
     {
@@ -921,7 +887,7 @@ namespace Test.Lifetimes.Lifetimes
       Log.Root.CatchAndDrop(task.Wait);
       Assert.AreEqual(TaskStatus.Faulted, task.Status);
     }
-    
+
     [Test]
     public void TestCancellationToken4()
     {
@@ -930,7 +896,7 @@ namespace Test.Lifetimes.Lifetimes
         def.Terminate();
         def.ThrowIfNotAlive();
       }, lt);
-      
+
       Log.Root.CatchAndDrop(task.Wait);
       Assert.AreEqual(TaskStatus.Faulted, task.Status);
     }
@@ -938,7 +904,7 @@ namespace Test.Lifetimes.Lifetimes
     [Test, Ignore("Fails on build server")]
     public void TestTooLongExecuting()
     {
-      
+
       var oldTimeout = LifetimeDefinition.WaitForExecutingInTerminationTimeoutMs;
       LifetimeDefinition.WaitForExecutingInTerminationTimeoutMs = 100;
 
@@ -966,9 +932,9 @@ namespace Test.Lifetimes.Lifetimes
 
     }
 #endif
-    
-    
-    
+
+
+
     [Test]
     public void T000_Items()
     {
@@ -1031,15 +997,15 @@ namespace Test.Lifetimes.Lifetimes
       Assert.IsFalse(flag, "Nested closed twice.");
 
       CollectionAssert.AreEqual(System.Linq.Enumerable.Range(0, entries.Count).Reverse().ToArray(), entries, "Order FAIL.");
-      
+
     }
 
 #if !NET35
     [Test]
     public void CancellationTokenTest()
     {
-      var def = Lifetime.Define();      
-      
+      var def = Lifetime.Define();
+
       var sw = new SpinWait();
       var task = Task.Run(() =>
       {
@@ -1049,7 +1015,7 @@ namespace Test.Lifetimes.Lifetimes
           sw.SpinOnce();
         }
       }, def.Lifetime);
-      
+
       Thread.Sleep(100);
       def.Terminate();
 
@@ -1062,41 +1028,41 @@ namespace Test.Lifetimes.Lifetimes
         Assert.True(task.IsCanceled);
         Assert.True(e.IsOperationCanceled());
         return;
-      }          
+      }
 
       Assert.Fail("Unreachable");
     }
-    
-    
+
+
     [Test]
-    public void CancellationTokenTestAlreadyCancelled()
+    public void ConcurrentStackTrace9()
     {
       var def = Lifetime.Define();
       def.Terminate();
-      
+
       var task = Task.Run(() =>
       {
         Assertion.Fail("Unreachable");
       }, def.Lifetime);
 
-      Assert.Throws<AggregateException>(() => task.Wait());
-      
+      task.Wait();
+
       Assert.True(task.IsCanceled);
     }
-    
+
     [Test]
     public void TestCancellationEternalLifetime()
     {
       var lt = Lifetime.Eternal;
-      
+
       var task = Task.Run(() =>
       {
         lt.ThrowIfNotAlive();
-        Thread.Yield();        
+        Thread.Yield();
       }, lt);
 
       task.Wait();
-      
+
       Assert.True(task.Status == TaskStatus.RanToCompletion);
     }
 
@@ -1105,17 +1071,17 @@ namespace Test.Lifetimes.Lifetimes
     {
       Assert.True(Lifetime.Terminated.CreateTaskCompletionSource<Unit>().Task.IsCanceled);
 
-      
-      
+
+
       var t = lt.CreateTaskCompletionSource<Unit>().Task;
       Assert.False(t.IsCompleted);
-      
+
       def.Terminate();
       Assert.True(t.IsCanceled);
     }
-    
-    
-    
+
+
+
     [Test]
     public void TestSynchronizeTaskCompletionSource()
     {
@@ -1123,34 +1089,34 @@ namespace Test.Lifetimes.Lifetimes
       var tcs = new TaskCompletionSource<Unit>();
       Lifetime.Terminated.CreateNested().SynchronizeWith(tcs);
       Assert.True(tcs.Task.IsCanceled);
-      
-      
+
+
       //tcs completed
       tcs = new TaskCompletionSource<Unit>();
       tcs.SetResult(Unit.Instance);
-      
+
       Lifetime.Terminated.CreateNested().SynchronizeWith(tcs); //nothing
       Lifetime.Eternal.CreateNested().SynchronizeWith(tcs); //nothing
-      
+
       def.SynchronizeWith(tcs);
       Assert.True(lt.Status == LifetimeStatus.Terminated);
-      
-      
+
+
       //lifetime terminates first
       tcs = new TaskCompletionSource<Unit>();
       var d = new LifetimeDefinition();
       d.SynchronizeWith(tcs);
       Assert.True(d.Lifetime.IsAlive);
       Assert.False(tcs.Task.IsCompleted);
-      
+
       d.Terminate();
       Assert.True(tcs.Task.IsCanceled);
-      
+
       //tcs terminates first
       tcs = new TaskCompletionSource<Unit>();
       d = new LifetimeDefinition();
       d.SynchronizeWith(tcs);
-      
+
       tcs.SetCanceled();
       Assert.True(d.Lifetime.Status == LifetimeStatus.Terminated);
     }
@@ -1162,16 +1128,16 @@ namespace Test.Lifetimes.Lifetimes
       Assert.True(lf.IsAlive);
       Thread.Sleep(200);
       Assert.True(lf.IsNotAlive);
-      
+
       lf = TestLifetime.CreateTerminatedAfter(TimeSpan.FromMilliseconds(100));
       Assert.True(lf.IsAlive);
       LifetimeDefinition.Terminate();
       Assert.True(lf.IsNotAlive);
-      
+
       Thread.Sleep(200);
       Assert.True(lf.IsNotAlive);
     }
-    
+
 #endif
 
     [Test]
@@ -1190,7 +1156,7 @@ namespace Test.Lifetimes.Lifetimes
           {
             Task.Factory.StartNew(() =>
             {
-              for (int k = 0; k < iterations; k++) 
+              for (int k = 0; k < iterations; k++)
                 lifetime.OnTermination(() => count++);
             }, TaskCreationOptions.AttachedToParent | TaskCreationOptions.LongRunning);
           }

@@ -34,16 +34,16 @@ namespace Test.Lifetimes.Collections
     }
 
     [Test]
-    public void ContentHashCode01()
+    public void HashCodeOfSetStackTrace11()
     {
       var set = new List<ComplexType>
       {
         new ComplexType(42),
         new ComplexType(666)
       };
-      
+
       // ReSharper disable ReturnValueOfPureMethodIsNotUsed
-      Assert.Throws<InvalidOperationException>(() => set.ContentHashCode());
+      set.ContentHashCode();
       Assert.DoesNotThrow(() => set.ContentHashCode(ComplexTypeExternalEqualityComparer.Instance));
       // ReSharper restore ReturnValueOfPureMethodIsNotUsed
     }

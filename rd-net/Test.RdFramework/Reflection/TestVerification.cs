@@ -20,17 +20,15 @@ namespace Test.RdFramework.Reflection
     // injected into another, but the activation for each of RdExt should be processed independently.
     // [TestCase(typeof(CircularDependencyExtError))]
     // [TestCase(typeof(CircularDependencyExt2Error))]
-    
+
     [TestCase(typeof(CircularDependencyInModelError))]
     [TestCase(typeof(CircularDependencyNestedModel1Error))]
     [TestCase(typeof(ModelCalls.ModelInvalidCalls))]
-    public void TestError(Type type)
+    public void ActivatorStackTrace10(Type type)
     {
       var serializer = new ReflectionSerializersFactory(new SimpleTypesCatalog());
       var activator = new ReflectionRdActivator(serializer, null);
-      var exception = Assert.Throws<Assertion.AssertionException>(() => activator.Activate(type));
-
-      Console.WriteLine(exception);
+      activator.Activate(type);
     }
 
     [Test]
@@ -50,7 +48,7 @@ namespace Test.RdFramework.Reflection
       var serializer = new ReflectionSerializersFactory(new SimpleTypesCatalog());
       var activator = new ReflectionRdActivator(serializer, null);
       var model = activator.Activate<RootModel>();
-      
+
       Assert.NotNull(model);
       Assert.NotNull(model.EmptyOK);
       Assert.NotNull(model.FieldsNotNullOk);

@@ -26,20 +26,20 @@ namespace Test.RdFramework
       serverList.Add("Server value 3");
       ServerWire.TransmitOneMessage();
       ServerWire.TransmitOneMessage();
-      ServerWire.TransmitOneMessage();      
+      ServerWire.TransmitOneMessage();
       Assert.AreEqual(3, clientList.Count);
-      
+
       serverList.Add("Server value 4");
       ServerWire.TransmitOneMessage();
       clientList[3] = "Client value 4";
       ClientWire.TransmitOneMessage();
-      
+
       Assert.AreEqual("Client value 4", clientList[3]);
       Assert.AreEqual("Client value 4", serverList[3]);
-      
+
       serverList.RemoveAt(0);
 
-      ServerWire.TransmitOneMessage();       
+      ServerWire.TransmitOneMessage();
       Assert.AreEqual("Server value 2", clientList[0]);
       Assert.AreEqual("Server value 2", serverList[0]);
     }
@@ -51,19 +51,19 @@ namespace Test.RdFramework
       var clientList = BindToClient(TestLifetime, new RdList<string> { OptimizeNested = true }, ourKey);
 
       var log = new List<string>();
-      clientList.Advise(TestLifetime, (e) => log.Add(e.Kind + " " + e.Index + " " + e.NewValue));   
+      clientList.Advise(TestLifetime, (e) => log.Add(e.Kind + " " + e.Index + " " + e.NewValue));
 
       serverList.Add("1");
       serverList[0] = "2";
       serverList[0] = "2"; //no value
       ServerWire.TransmitAllMessages();
-      
+
       clientList[0] = "1";
       ClientWire.TransmitAllMessages();
 
       serverList.Clear();
       ServerWire.TransmitAllMessages();
-      
+
       Assert.AreEqual(new List<string> {"Add 0 1", "Update 0 2", "Update 0 1", "Remove 0 "}, log);
 
     }
@@ -111,7 +111,7 @@ namespace Test.RdFramework
 
       clientList.RemoveAt(0);
       Assert.IsFalse(itemRemovedServer);
-      
+
       ClientWire.TransmitOneMessage();
 
       Assert.IsTrue(itemRemovedServer);
@@ -119,12 +119,12 @@ namespace Test.RdFramework
     }
 
     [Test]
-    public void TestNullability()
+    public void ServerListAddStackTrace21()
     {
       var serverList = BindToServer(LifetimeDefinition.Lifetime, new RdList<string> {OptimizeNested = true}, ourKey);
       var clientList = BindToClient(LifetimeDefinition.Lifetime, new RdList<string> {OptimizeNested = true}, ourKey);
 
-      Assert.Throws<ArgumentNullException>(() => { serverList.Add(null); });
+      serverList.Add(null);
       ServerWire.TransmitAllMessages();
       Assert.AreEqual(0, serverList.Count);
       Assert.AreEqual(0, clientList.Count);
