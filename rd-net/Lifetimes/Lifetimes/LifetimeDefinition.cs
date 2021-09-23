@@ -1000,7 +1000,7 @@ namespace JetBrains.Lifetimes
 
     /// <summary>
     /// <list type="number">
-    /// <item>Finishes <paramref name="taskCompletionSource"/> with <see cref="TaskCompletionSource{TResult}.SetCanceled"/> when
+    /// <item>Finishes <paramref name="taskCompletionSource"/> with <see cref="TaskCompletionSource{TResult}.SetCanceled()"/> when
     /// this definition is termination.</item>
     /// <item>
     /// Terminates this definition by <see cref="Terminate"/> when <paramref name="taskCompletionSource"/> is completed (with any result).

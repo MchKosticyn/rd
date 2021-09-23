@@ -1,6 +1,5 @@
 using System;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
 using System.Threading;
@@ -293,7 +292,7 @@ namespace JetBrains.Diagnostics
     public class AssertionException : Exception
     {
       public AssertionException(string message) : base(message) { }
-      
+
       protected AssertionException(SerializationInfo info, StreamingContext context) : base(info, context)
       {
       }

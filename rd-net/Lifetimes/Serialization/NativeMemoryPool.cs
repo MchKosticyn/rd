@@ -269,7 +269,7 @@ namespace JetBrains.Serialization
           throw new ArgumentException($"Can't allocate more memory: {size:N0} bytes, max: {MaxAllocSize:N0}");
 
         myPtr = Marshal.ReAllocHGlobal(myPtr, new IntPtr(size));
-        if (myPtr == null)
+        if (myPtr == IntPtr.Zero)
           ErrorOomOldMono();
         Length = size;
         return myPtr;

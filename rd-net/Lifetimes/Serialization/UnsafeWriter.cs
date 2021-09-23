@@ -172,7 +172,7 @@ namespace JetBrains.Serialization
     private int myCount;
 
     /// <summary>
-    /// Indicates whether the UnsafeWriter should try to cleanup used memory in <see cref="NativeMemoryPool"/> 
+    /// Indicates whether the UnsafeWriter should try to cleanup used memory in <see cref="NativeMemoryPool"/>
     /// </summary>
     internal int ReleaseResources;
 
@@ -224,7 +224,7 @@ namespace JetBrains.Serialization
         myMemory.Free();
         myCurrentAllocSize = 0;
         // Setting current alloc size to zero have a special semantic of making current UnsafeWriter invalid.
-        // There is no need to additionally resetting these pointers as write will check available memory and raise an 
+        // There is no need to additionally resetting these pointers as write will check available memory and raise an
         // exception for this special case
         // myStartPtr = (byte*) 0;
         // myPtr = (byte*) 0;
@@ -446,7 +446,7 @@ namespace JetBrains.Serialization
     [MethodImpl(MethodImplAdvancedOptions.AggressiveInlining)]
     public void Write(Uri value)
     {
-      Write(Uri.EscapeUriString(value.OriginalString));
+      Write(Uri.EscapeDataString(value.OriginalString));
     }
 
     [MethodImpl(MethodImplAdvancedOptions.AggressiveInlining)]

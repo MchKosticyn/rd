@@ -15,7 +15,7 @@ namespace JetBrains.Threading
   /// <item>Producers - fills buffer with <see cref="Put(byte*,int)"/> method</item>
   /// <item>Consumer - process buffer in dedicated thread</item>
   /// </list>
-  /// 
+  ///
   /// </summary>
   public unsafe class ByteBufferAsyncProcessor
   {
@@ -51,12 +51,12 @@ namespace JetBrains.Threading
           Assertion.Assert(SeqN == long.MaxValue, "SeqN == long.MaxValue, but: {0}", SeqN);
           return true;
         }
-        
+
         if (buffer.AcknowledgedSeqN < SeqN)
           return false;
-        
+
         Reset();
-        
+
         return true;
       }
 
@@ -79,7 +79,7 @@ namespace JetBrains.Threading
     public long AcknowledgedSeqN { get; private set; }
 
     private const int DefaultChunkSize = 16370; // some reserve for length + seqN
-    private readonly ILog myLog;  //use with care because Logger use AsyncProcessor itself 
+    private readonly ILog myLog;  //use with care because Logger use AsyncProcessor itself
     [PublicAPI] public readonly int ChunkSize;
 
     private const int DefaultShrinkIntervalMs = 30000; //30 sec
@@ -95,7 +95,7 @@ namespace JetBrains.Threading
         return myAllDataProcessed;
       }
     }
-    
+
     private readonly HashSet<string> myPauseReasons = new HashSet<string>();
 
     public StateKind State { get; private set; }
@@ -103,7 +103,7 @@ namespace JetBrains.Threading
     private Chunk myChunkToFill;
 
     private bool myProcessing;
-    
+
     private volatile Chunk myChunkToProcess;
 
     private Thread myAsyncProcessingThread;
@@ -119,8 +119,8 @@ namespace JetBrains.Threading
       myProcessor = processor;
       ChunkSize = chunkSize;
       ShrinkIntervalMs = DefaultShrinkIntervalMs;
-      
-      
+
+
       myLog = Log.GetLog<ByteBufferAsyncProcessor>().GetSublogger(Id);
 
 //      var otherChunk = new Chunk(chunkSize);
@@ -128,7 +128,7 @@ namespace JetBrains.Threading
 //      otherChunk.Next = myChunkToFill;
 
       Reset(chunkSize);
-      
+
       State = StateKind.Initialized;
     }
 
@@ -191,7 +191,7 @@ namespace JetBrains.Threading
       if (!res)
       {
         LogLog.Warn($"Async processor {Id} hasn't finished in ${timeoutMs} ms. Trying to abort thread.");
-        LogLog.Catch(() => myAsyncProcessingThread.Abort());
+        LogLog.Catch(() => myAsyncProcessingThread.Interrupt());
       }
 
       CleanupInternal();
@@ -209,14 +209,12 @@ namespace JetBrains.Threading
       catch (ThreadAbortException e)
       {
         LogLog.Info($"ByteBufferProcessor {Id} was stopped by Thread.Abort rather than by normal Stop(): {0}", e);
-
-        Thread.ResetAbort();
       }
     }
-    
+
     #endregion
-    
-    #region Processing 
+
+    #region Processing
 
     public void Acknowledge(long seqNumber)
     {
@@ -240,7 +238,7 @@ namespace JetBrains.Threading
       Assertion.Require(Thread.CurrentThread != myAsyncProcessingThread, "Thread.CurrentThread != myAsyncProcessingThread");
       lock (myLock)
       {
-        while (myProcessing) 
+        while (myProcessing)
           Monitor.Wait(myLock, 1);
 
         var chunk = myChunkToFill.Next;
@@ -259,8 +257,8 @@ namespace JetBrains.Threading
         }
       }
     }
-    
-    
+
+
     private void ThreadProc()
     {
       while (true)
@@ -276,8 +274,8 @@ namespace JetBrains.Threading
             if (State >= StateKind.Terminating) return;
           }
 
-          //In case of only put requests, we could write Assertion.Assert(chunk.Ptr > 0, "chunk.Ptr > 0"); 
-          //But in case of clear, we could get "Wait + Put(full)  + Clear + Put" before this line and 'chunkToProcess' will point to empty chunk. 
+          //In case of only put requests, we could write Assertion.Assert(chunk.Ptr > 0, "chunk.Ptr > 0");
+          //But in case of clear, we could get "Wait + Put(full)  + Clear + Put" before this line and 'chunkToProcess' will point to empty chunk.
           //RIDER-15223
           while (myChunkToProcess.CheckEmpty(this)) //should never be endless, because `myAllDataProcessed` is 'false', that means that we MUST have ptr > 0 somewhere
             myChunkToProcess = myChunkToProcess.Next;
@@ -362,9 +360,9 @@ namespace JetBrains.Threading
       myChunkToFill = new Chunk(chunkSize);
       myChunkToFill.Next = myChunkToFill;
       myLastShrinkOrGrowTimeMs = Environment.TickCount;
-      myChunkToProcess = myChunkToFill; 
+      myChunkToProcess = myChunkToFill;
     }
-    
+
     public void Clear()
     {
       Assertion.Require(Thread.CurrentThread != myAsyncProcessingThread, "Thread.CurrentThread != myAsyncProcessingThread");
@@ -373,25 +371,25 @@ namespace JetBrains.Threading
       {
         LogLog.Verbose(LogCategory, "Cleaning '{0}', state={1}", Id, State);
         if (State >= StateKind.Stopping) return;
-        
+
         WaitProcessingFinished();
 
-        Reset(ChunkSize);        
+        Reset(ChunkSize);
         myAllDataProcessed = true;
       }
     }
-    
+
     public bool Pause([NotNull] string reason)
     {
       if (reason == null) throw new ArgumentNullException(nameof(reason));
-      
+
       lock (myLock)
-      {        
+      {
         if (State >= StateKind.Stopping) return false;
-        
+
         var newReasonAdded = myPauseReasons.Add(reason);
         myLog.Verbose("PAUSE ('{0}') {1}:: state={2}", reason, newReasonAdded ? "": "<already has this pause reason>", State);
-        
+
         WaitProcessingFinished();
         return newReasonAdded;
       }
@@ -400,20 +398,20 @@ namespace JetBrains.Threading
     private void WaitProcessingFinished()
     {
       if (Thread.CurrentThread == myAsyncProcessingThread) return; //don't want to deadlock
-      
-      while (myProcessing) 
+
+      while (myProcessing)
         Monitor.Wait(myLock, 1);
     }
 
     public bool Resume([NotNull] string reason)
     {
       if (reason == null) throw new ArgumentNullException(nameof(reason));
-      
+
       lock (myLock)
       {
         var present = myPauseReasons.Remove(reason);
         var unpaused = myPauseReasons.Count == 0;
-        
+
         myLog.Verbose((unpaused ? "RESUME" : $"Remove pause reason('{reason}')") + $" :: state={State}");
         Monitor.PulseAll(myLock);
         return present;
@@ -469,11 +467,11 @@ namespace JetBrains.Threading
     [PublicAPI] public void Put(byte* start, int count)
     {
       if (count <= 0) return;
-      
+
       lock (myLock)
       {
-        if (State >= StateKind.Stopping) return;        
-        
+        if (State >= StateKind.Stopping) return;
+
 //        //reentrancy guard
 //        if (myAsyncProcessingThread == Thread.CurrentThread)
 //        {
@@ -514,7 +512,7 @@ namespace JetBrains.Threading
     private void GrowConditionally() //under lock
     {
       if (myChunkToFill.Next.CheckEmpty(this)) return;
-      
+
       LogLog.Trace(LogCategory, "Grow: {0} bytes", ChunkSize);
       myChunkToFill.Next = new Chunk(ChunkSize) { Next = myChunkToFill.Next };
       myLastShrinkOrGrowTimeMs = Environment.TickCount;
@@ -523,17 +521,17 @@ namespace JetBrains.Threading
     private void ShrinkConditionally(Chunk upTo) //under lock
     {
       Assertion.Assert(myChunkToFill != upTo, "myFreeChunk != upTo");
-      
+
       var now = Environment.TickCount;
       if (now - myLastShrinkOrGrowTimeMs <= ShrinkIntervalMs && /*overflow*/now - myLastShrinkOrGrowTimeMs >= 0 ) return;
-      
+
       myLastShrinkOrGrowTimeMs = now;
       while (true)
       {
         var toRemove = myChunkToFill.Next;
         if (toRemove == upTo || !toRemove.CheckEmpty(this))
           break;
-          
+
         LogLog.Trace(LogCategory, "Shrink: {0} bytes, seqN: {1}", ChunkSize, toRemove);
         myChunkToFill.Next = toRemove.Next;
       }
